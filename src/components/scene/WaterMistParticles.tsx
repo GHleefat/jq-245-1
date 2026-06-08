@@ -3,90 +3,71 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useHumidityStore } from "@/store/useHumidityStore";
 
-const GLASS_RADIUS_INNER = 1.03;
+const GLASS_RADIUS_INNER = 1.075;
 
 const WaterMistParticles = () => {
   const mistRef = useRef<THREE.Points>(null);
-  const dropletRef = useRef<THREE.Points>(null);
   const denseDropletRef = useRef<THREE.Points>(null);
   const { humidity } = useHumidityStore();
 
-  const mistCount = 500;
-  const dropletCount = 250;
-  const denseDropletCount = 350;
+  const mistCount = 480;
+  const denseDropletCount = 400;
 
-  const [mistPositions, mistSpeeds, mistAngles, mistRadii] = useMemo(() => {
+  const [mistPositions, mistAngles, mistY, mistPhases] = useMemo(() => {
     const pos = new Float32Array(mistCount * 3);
-    const spd = new Float32Array(mistCount);
     const ang = new Float32Array(mistCount);
-    const rad = new Float32Array(mistCount);
+    const yArr = new Float32Array(mistCount);
+    const phase = new Float32Array(mistCount);
 
-    for (let i = 0; i < mistCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = GLASS_RADIUS_INNER - 0.01 - Math.random() * 0.04;
-      ang[i] = angle;
-      rad[i] = radius;
-      pos[i * 3] = Math.cos(angle) * radius;
-      pos[i * 3 + 1] = -0.05 + Math.random() * 1.55;
-      pos[i * 3 + 2] = Math.sin(angle) * radius;
+    const ringCount = 16;
+    const perRing = Math.floor(mistCount / ringCount);
 
-      spd[i] = 0.06 + Math.random() * 0.15;
+    let idx = 0;
+    for (let r = 0; r < ringCount; r++) {
+      const baseY = -0.05 + (r / (ringCount - 1)) * 1.55;
+      for (let i = 0; i < perRing && idx < mistCount; i++, idx++) {
+        const angle =
+          (i / perRing) * Math.PI * 2 + (r % 2) * (Math.PI / perRing);
+        const radius = GLASS_RADIUS_INNER - 0.005 - Math.random() * 0.01;
+        const yOffset = (Math.random() - 0.5) * 0.06;
+
+        ang[idx] = angle;
+        yArr[idx] = baseY + yOffset;
+        phase[idx] = Math.random() * Math.PI * 2;
+        pos[idx * 3] = Math.cos(angle) * radius;
+        pos[idx * 3 + 1] = baseY + yOffset;
+        pos[idx * 3 + 2] = Math.sin(angle) * radius;
+      }
     }
 
-    return [pos, spd, ang, rad];
+    return [pos, ang, yArr, phase];
   }, []);
 
-  const [dropletPositions, dropletSpeeds] = useMemo(() => {
-    const pos = new Float32Array(dropletCount * 3);
-    const spd = new Float32Array(dropletCount);
+  const [denseDropletPositions, denseDropletSpeeds] = useMemo(() => {
+    const pos = new Float32Array(denseDropletCount * 3);
+    const spd = new Float32Array(denseDropletCount);
 
-    for (let i = 0; i < dropletCount; i++) {
+    for (let i = 0; i < denseDropletCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = GLASS_RADIUS_INNER - 0.003 - Math.random() * 0.01;
+      const radius = GLASS_RADIUS_INNER - 0.002 - Math.random() * 0.005;
       pos[i * 3] = Math.cos(angle) * radius;
-      pos[i * 3 + 1] = 0.1 + Math.random() * 1.35;
+      pos[i * 3 + 1] = 0.0 + Math.random() * 1.5;
       pos[i * 3 + 2] = Math.sin(angle) * radius;
 
-      spd[i] = 0.015 + (i % 7) * 0.006;
+      spd[i] = 0.008 + Math.random() * 0.025;
     }
 
     return [pos, spd];
   }, []);
-
-  const [denseDropletPositions, denseDropletSpeeds, denseDropletSizes] =
-    useMemo(() => {
-      const pos = new Float32Array(denseDropletCount * 3);
-      const spd = new Float32Array(denseDropletCount);
-      const sze = new Float32Array(denseDropletCount);
-
-      for (let i = 0; i < denseDropletCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = GLASS_RADIUS_INNER - 0.001 - Math.random() * 0.006;
-        pos[i * 3] = Math.cos(angle) * radius;
-        pos[i * 3 + 1] = 0.0 + Math.random() * 1.45;
-        pos[i * 3 + 2] = Math.sin(angle) * radius;
-
-        spd[i] = 0.01 + (i % 9) * 0.005;
-        sze[i] = 0.035 + Math.random() * 0.05;
-      }
-
-      return [pos, spd, sze];
-    }, []);
 
   const isOptimal = humidity >= 60 && humidity <= 85;
   const isWet = humidity > 85;
   const visible = isOptimal || isWet;
 
   const mistIntensity = isOptimal
-    ? 0.45 + Math.min(0.55, (humidity - 60) / 45)
+    ? 0.5 + Math.min(0.5, (humidity - 60) / 50)
     : isWet
-      ? 0.7 + Math.min(0.3, (humidity - 85) / 50)
-      : 0;
-
-  const dropletIntensity = isOptimal
-    ? Math.min(0.4, (humidity - 60) / 62)
-    : isWet
-      ? 0.5 + Math.min(0.5, (humidity - 85) / 30)
+      ? 0.75 + Math.min(0.25, (humidity - 85) / 60)
       : 0;
 
   const denseDropletIntensity = isWet ? Math.min(1, (humidity - 85) / 15) : 0;
@@ -99,40 +80,20 @@ const WaterMistParticles = () => {
         .array as Float32Array;
 
       for (let i = 0; i < mistCount; i++) {
-        posArray[i * 3 + 1] += mistSpeeds[i] * delta;
+        const wobble = Math.sin(t * 0.35 + mistPhases[i]) * 0.004;
+        const angleWobble = Math.sin(t * 0.2 + mistPhases[i] * 1.3) * 0.006;
+        const yWobble = Math.sin(t * 0.3 + mistPhases[i] * 0.7) * 0.003;
 
-        if (posArray[i * 3 + 1] > 1.55) {
-          posArray[i * 3 + 1] = -0.05;
-          mistAngles[i] = Math.random() * Math.PI * 2;
-          mistRadii[i] = GLASS_RADIUS_INNER - 0.01 - Math.random() * 0.04;
-        }
+        const radius = GLASS_RADIUS_INNER - 0.008 + wobble;
+        const angle = mistAngles[i] + angleWobble;
+        const y = mistY[i] + yWobble;
 
-        const wobble = Math.sin(t * 0.5 + i * 0.6) * 0.006;
-        const angle = mistAngles[i] + Math.sin(t * 0.25 + i * 0.5) * 0.012;
-        posArray[i * 3] = Math.cos(angle) * (mistRadii[i] + wobble);
-        posArray[i * 3 + 2] = Math.sin(angle) * (mistRadii[i] + wobble);
+        posArray[i * 3] = Math.cos(angle) * radius;
+        posArray[i * 3 + 1] = y;
+        posArray[i * 3 + 2] = Math.sin(angle) * radius;
       }
 
       mistRef.current.geometry.attributes.position.needsUpdate = true;
-    }
-
-    if (dropletRef.current) {
-      const posArray = dropletRef.current.geometry.attributes.position
-        .array as Float32Array;
-
-      for (let i = 0; i < dropletCount; i++) {
-        posArray[i * 3 + 1] -= dropletSpeeds[i] * delta;
-
-        if (posArray[i * 3 + 1] < -0.05) {
-          posArray[i * 3 + 1] = 1.45;
-          const angle = Math.random() * Math.PI * 2;
-          const radius = GLASS_RADIUS_INNER - 0.003 - Math.random() * 0.01;
-          posArray[i * 3] = Math.cos(angle) * radius;
-          posArray[i * 3 + 2] = Math.sin(angle) * radius;
-        }
-      }
-
-      dropletRef.current.geometry.attributes.position.needsUpdate = true;
     }
 
     if (denseDropletRef.current) {
@@ -145,7 +106,7 @@ const WaterMistParticles = () => {
         if (posArray[i * 3 + 1] < -0.05) {
           posArray[i * 3 + 1] = 1.5;
           const angle = Math.random() * Math.PI * 2;
-          const radius = GLASS_RADIUS_INNER - 0.001 - Math.random() * 0.006;
+          const radius = GLASS_RADIUS_INNER - 0.002 - Math.random() * 0.005;
           posArray[i * 3] = Math.cos(angle) * radius;
           posArray[i * 3 + 2] = Math.sin(angle) * radius;
         }
@@ -169,37 +130,15 @@ const WaterMistParticles = () => {
           />
         </bufferGeometry>
         <pointsMaterial
-          color="#f0f8ff"
-          size={0.035}
+          color="#f5faff"
+          size={0.04}
           transparent
-          opacity={mistIntensity * 0.55}
+          opacity={mistIntensity * 0.6}
           sizeAttenuation
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
-
-      {dropletIntensity > 0 && (
-        <points ref={dropletRef}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={dropletCount}
-              array={dropletPositions}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <pointsMaterial
-            color="#ffffff"
-            size={0.04}
-            transparent
-            opacity={dropletIntensity * 0.7}
-            sizeAttenuation
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </points>
-      )}
 
       {denseDropletIntensity > 0 && (
         <points ref={denseDropletRef}>
@@ -213,7 +152,7 @@ const WaterMistParticles = () => {
           </bufferGeometry>
           <pointsMaterial
             color="#ffffff"
-            size={0.05}
+            size={0.055}
             transparent
             opacity={denseDropletIntensity * 0.9}
             sizeAttenuation
