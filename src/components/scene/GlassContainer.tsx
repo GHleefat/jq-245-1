@@ -10,15 +10,15 @@ const GlassContainer = () => {
   const isWet = humidity > 85;
 
   const mistLayerOpacity = isOptimal
-    ? Math.min(0.4, (humidity - 60) / 60)
+    ? Math.min(0.3, (humidity - 60) / 80)
     : isWet
-      ? 0.4 + Math.min(0.6, (humidity - 85) / 25)
+      ? 0.2 + Math.min(0.4, (humidity - 85) / 35)
       : 0;
 
-  const condensationOpacity = isWet ? Math.min(1, (humidity - 85) / 15) : 0;
+  const condensationOpacity = isWet ? Math.min(0.8, (humidity - 85) / 20) : 0;
 
   const glassRoughness = isWet
-    ? 0.05 + Math.min(0.25, (humidity - 85) / 60)
+    ? 0.05 + Math.min(0.2, (humidity - 85) / 75)
     : 0.05;
 
   return (
@@ -28,28 +28,28 @@ const GlassContainer = () => {
         <meshPhysicalMaterial
           color="#e8f4f8"
           transparent
-          opacity={0.25}
+          opacity={0.22}
           roughness={glassRoughness}
           metalness={0}
-          transmission={0.9}
+          transmission={0.92}
           thickness={0.05}
           envMapIntensity={1}
-          clearcoat={1}
+          clearcoat={0.8}
           clearcoatRoughness={0.1}
           ior={1.45}
         />
       </mesh>
 
       <mesh position={[0, 1.5, 0]}>
-        <cylinderGeometry args={[1.12, 1.12, 0.04, 64]} />
+        <cylinderGeometry args={[1.1, 1.1, 0.02, 64]} />
         <meshPhysicalMaterial
-          color="#d0eaf3"
+          color="#e0f0f8"
           transparent
-          opacity={0.4}
-          roughness={0.1}
+          opacity={0.25}
+          roughness={0.15}
           metalness={0}
-          transmission={0.8}
-          thickness={0.08}
+          transmission={0.88}
+          thickness={0.04}
         />
       </mesh>
 
@@ -67,55 +67,31 @@ const GlassContainer = () => {
       </mesh>
 
       {mistLayerOpacity > 0 && (
-        <>
-          <mesh position={[0, 0.8, 0]}>
-            <cylinderGeometry args={[1.07, 1.08, 1.3, 64, 1, true]} />
-            <meshPhysicalMaterial
-              color="#ffffff"
-              transparent
-              opacity={mistLayerOpacity * 0.12}
-              roughness={0.85}
-              transmission={0.4}
-              side={THREE.BackSide}
-            />
-          </mesh>
-
-          <mesh position={[0, 1.44, 0]}>
-            <ringGeometry args={[1.0, 1.09, 64]} />
-            <meshBasicMaterial
-              color="#f0f8ff"
-              transparent
-              opacity={mistLayerOpacity * 0.35}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        </>
+        <mesh position={[0, 0.75, 0]}>
+          <cylinderGeometry args={[1.075, 1.085, 1.45, 64, 1, true]} />
+          <meshPhysicalMaterial
+            color="#f5faff"
+            transparent
+            opacity={mistLayerOpacity * 0.08}
+            roughness={0.9}
+            transmission={0.55}
+            side={THREE.BackSide}
+          />
+        </mesh>
       )}
 
       {condensationOpacity > 0 && (
-        <>
-          <mesh position={[0, 0.9, 0]}>
-            <cylinderGeometry args={[1.085, 1.09, 1.5, 64, 1, true]} />
-            <meshPhysicalMaterial
-              color="#d4ebf1"
-              transparent
-              opacity={condensationOpacity * 0.18}
-              roughness={0.95}
-              transmission={0.2}
-              side={THREE.BackSide}
-            />
-          </mesh>
-
-          <mesh position={[0, 1.46, 0]}>
-            <ringGeometry args={[1.02, 1.09, 64]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={condensationOpacity * 0.5}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        </>
+        <mesh position={[0, 0.8, 0]}>
+          <cylinderGeometry args={[1.085, 1.092, 1.55, 64, 1, true]} />
+          <meshPhysicalMaterial
+            color="#e4f1f7"
+            transparent
+            opacity={condensationOpacity * 0.12}
+            roughness={0.95}
+            transmission={0.35}
+            side={THREE.BackSide}
+          />
+        </mesh>
       )}
     </group>
   );
