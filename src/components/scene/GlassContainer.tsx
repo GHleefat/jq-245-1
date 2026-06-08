@@ -6,9 +6,20 @@ const GlassContainer = () => {
   const glassRef = useRef<THREE.Mesh>(null);
   const { humidity } = useHumidityStore();
 
-  const mistOpacity = humidity >= 60 && humidity <= 85
-    ? Math.min(1, (humidity - 60) / 25)
-    : 0;
+  const isOptimal = humidity >= 60 && humidity <= 85;
+  const isWet = humidity > 85;
+
+  const mistLayerOpacity = isOptimal
+    ? Math.min(0.4, (humidity - 60) / 60)
+    : isWet
+      ? 0.4 + Math.min(0.6, (humidity - 85) / 25)
+      : 0;
+
+  const condensationOpacity = isWet ? Math.min(1, (humidity - 85) / 15) : 0;
+
+  const glassRoughness = isWet
+    ? 0.05 + Math.min(0.25, (humidity - 85) / 60)
+    : 0.05;
 
   return (
     <group>
@@ -18,7 +29,7 @@ const GlassContainer = () => {
           color="#e8f4f8"
           transparent
           opacity={0.25}
-          roughness={0.05}
+          roughness={glassRoughness}
           metalness={0}
           transmission={0.9}
           thickness={0.05}
@@ -55,25 +66,52 @@ const GlassContainer = () => {
         />
       </mesh>
 
-      {mistOpacity > 0 && (
+      {mistLayerOpacity > 0 && (
         <>
           <mesh position={[0, 0.8, 0]}>
-            <cylinderGeometry args={[1.05, 1.05, 1.2, 64, 1, true]} />
+            <cylinderGeometry args={[1.07, 1.08, 1.3, 64, 1, true]} />
             <meshPhysicalMaterial
               color="#ffffff"
               transparent
-              opacity={mistOpacity * 0.08}
-              roughness={0.8}
-              transmission={0.5}
+              opacity={mistLayerOpacity * 0.12}
+              roughness={0.85}
+              transmission={0.4}
+              side={THREE.BackSide}
+            />
+          </mesh>
+
+          <mesh position={[0, 1.44, 0]}>
+            <ringGeometry args={[1.0, 1.09, 64]} />
+            <meshBasicMaterial
+              color="#f0f8ff"
+              transparent
+              opacity={mistLayerOpacity * 0.35}
               side={THREE.DoubleSide}
             />
           </mesh>
-          <mesh position={[0, 1.42, 0]}>
-            <ringGeometry args={[0.95, 1.08, 64]} />
+        </>
+      )}
+
+      {condensationOpacity > 0 && (
+        <>
+          <mesh position={[0, 0.9, 0]}>
+            <cylinderGeometry args={[1.085, 1.09, 1.5, 64, 1, true]} />
+            <meshPhysicalMaterial
+              color="#d4ebf1"
+              transparent
+              opacity={condensationOpacity * 0.18}
+              roughness={0.95}
+              transmission={0.2}
+              side={THREE.BackSide}
+            />
+          </mesh>
+
+          <mesh position={[0, 1.46, 0]}>
+            <ringGeometry args={[1.02, 1.09, 64]} />
             <meshBasicMaterial
               color="#ffffff"
               transparent
-              opacity={mistOpacity * 0.25}
+              opacity={condensationOpacity * 0.5}
               side={THREE.DoubleSide}
             />
           </mesh>
