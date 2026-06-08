@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useHumidityStore } from "@/store/useHumidityStore";
 
-const GLASS_RADIUS_INNER = 1.075;
+const GLASS_OUTER_RADIUS = 1.13;
+const GLASS_INNER_WALL = 1.075;
 
 const WaterMistParticles = () => {
   const mistRef = useRef<THREE.Points>(null);
@@ -28,7 +29,7 @@ const WaterMistParticles = () => {
       for (let i = 0; i < perRing && idx < mistCount; i++, idx++) {
         const angle =
           (i / perRing) * Math.PI * 2 + (r % 2) * (Math.PI / perRing);
-        const radius = GLASS_RADIUS_INNER - 0.005 - Math.random() * 0.01;
+        const radius = GLASS_OUTER_RADIUS + Math.random() * 0.015;
         const yOffset = (Math.random() - 0.5) * 0.06;
 
         ang[idx] = angle;
@@ -43,22 +44,41 @@ const WaterMistParticles = () => {
     return [pos, ang, yArr, phase];
   }, []);
 
-  const [denseDropletPositions, denseDropletSpeeds] = useMemo(() => {
-    const pos = new Float32Array(denseDropletCount * 3);
-    const spd = new Float32Array(denseDropletCount);
+  const [denseDropletPositions, denseDropletSpeeds, denseDropletAngles] =
+    useMemo(() => {
+      const pos = new Float32Array(denseDropletCount * 3);
+      const spd = new Float32Array(denseDropletCount);
+      const ang = new Float32Array(denseDropletCount);
 
-    for (let i = 0; i < denseDropletCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = GLASS_RADIUS_INNER - 0.002 - Math.random() * 0.005;
-      pos[i * 3] = Math.cos(angle) * radius;
-      pos[i * 3 + 1] = 0.0 + Math.random() * 1.5;
-      pos[i * 3 + 2] = Math.sin(angle) * radius;
+      const dropletRings = 12;
+      const perDropletRing = Math.floor(denseDropletCount / dropletRings);
 
-      spd[i] = 0.008 + Math.random() * 0.025;
-    }
+      let idx = 0;
+      for (let r = 0; r < dropletRings; r++) {
+        const baseY = (r / (dropletRings - 1)) * 1.5;
+        for (
+          let i = 0;
+          i < perDropletRing && idx < denseDropletCount;
+          i++, idx++
+        ) {
+          const angle =
+            (i / perDropletRing) * Math.PI * 2 +
+            (r % 2) * (Math.PI / perDropletRing) +
+            Math.random() * 0.3;
+          const radius = GLASS_INNER_WALL + 0.002 + Math.random() * 0.006;
+          const yOffset = (Math.random() - 0.5) * 0.1;
 
-    return [pos, spd];
-  }, []);
+          ang[idx] = angle;
+          pos[idx * 3] = Math.cos(angle) * radius;
+          pos[idx * 3 + 1] = baseY + yOffset;
+          pos[idx * 3 + 2] = Math.sin(angle) * radius;
+
+          spd[idx] = 0.008 + Math.random() * 0.025;
+        }
+      }
+
+      return [pos, spd, ang];
+    }, []);
 
   const isOptimal = humidity >= 60 && humidity <= 85;
   const isWet = humidity > 85;
@@ -84,7 +104,7 @@ const WaterMistParticles = () => {
         const angleWobble = Math.sin(t * 0.2 + mistPhases[i] * 1.3) * 0.006;
         const yWobble = Math.sin(t * 0.3 + mistPhases[i] * 0.7) * 0.003;
 
-        const radius = GLASS_RADIUS_INNER - 0.008 + wobble;
+        const radius = GLASS_OUTER_RADIUS + 0.008 + wobble;
         const angle = mistAngles[i] + angleWobble;
         const y = mistY[i] + yWobble;
 
@@ -104,9 +124,9 @@ const WaterMistParticles = () => {
         posArray[i * 3 + 1] -= denseDropletSpeeds[i] * delta;
 
         if (posArray[i * 3 + 1] < -0.05) {
-          posArray[i * 3 + 1] = 1.5;
-          const angle = Math.random() * Math.PI * 2;
-          const radius = GLASS_RADIUS_INNER - 0.002 - Math.random() * 0.005;
+          posArray[i * 3 + 1] = 0.8 + Math.random() * 0.75;
+          const angle = denseDropletAngles[i] + Math.random() * 0.5;
+          const radius = GLASS_INNER_WALL + 0.002 + Math.random() * 0.006;
           posArray[i * 3] = Math.cos(angle) * radius;
           posArray[i * 3 + 2] = Math.sin(angle) * radius;
         }
@@ -120,7 +140,7 @@ const WaterMistParticles = () => {
 
   return (
     <group>
-      <points ref={mistRef}>
+      <points ref={mistRef} renderOrder={-1}>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
